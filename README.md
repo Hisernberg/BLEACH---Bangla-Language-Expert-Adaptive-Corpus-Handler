@@ -84,6 +84,3 @@ Optional 4-bit activation simulation
 
 Single-GPU only (no DeepSpeed / FSDP)
 
-
-
-............................
