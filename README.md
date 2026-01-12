@@ -80,53 +80,6 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 
 ---
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    BLEACH Architecture                       │
-│                                                             │
-│  Input Tokens                                               │
-│       ↓                                                     │
-│  Embedding (101,975 vocab × 512 dim)                       │
-│       ↓                                                     │
-│  ┌─────────────────────────────────────┐                   │
-│  │  Transformer Block × 6              │                   │
-│  │  ┌──────────────────────────────┐  │                   │
-│  │  │ Multi-Head Self-Attention    │  │                   │
-│  │  │ (8 heads × 64 dim + RoPE)    │  │                   │
-│  │  └──────────────────────────────┘  │                   │
-│  │              ↓                      │                   │
-│  │  ┌──────────────────────────────┐  │                   │
-│  │  │ Sparse MoE Layer (5 experts) │  │                   │
-│  │  │                              │  │                   │
-│  │  │  Router → Expert Selection    │  │                   │
-│  │  │    ├─→ Expert 0 (14.4%)      │  │                   │
-│  │  │    ├─→ Expert 1 (27.0%) ◄─┐  │  │                   │
-│  │  │    ├─→ Expert 2 (26.8%) ◄─┤  │  │                   │
-│  │  │    ├─→ Expert 3 (14.6%)   │  │  │                   │
-│  │  │    └─→ Expert 4 (17.2%)   │  │  │                   │
-│  │  │                           │  │  │                   │
-│  │  │  Top-1 Routing            │  │  │                   │
-│  │  │  (SwiGLU activation)      │  │  │                   │
-│  │  └──────────────────────────────┘  │                   │
-│  └─────────────────────────────────────┘                   │
-│       ↓                                                     │
-│  Language Modeling Head (shared embeddings)                │
-│       ↓                                                     │
-│  Output Logits (101,975 vocab)                            │
-└─────────────────────────────────────────────────────────────┘
-
-Key Components:
-• 6 Transformer layers (512 hidden dim)
-• 5 Expert FFNs per layer (1,280 intermediate dim)
-• Top-1 sparse routing (40% params active per token)
-• RoPE positional encoding (rotation-based)
-• R-Drop consistency regularization
-• Load balancing auxiliary loss
-```
-
----
 
 ## 🚀 Quick Start
 
@@ -356,35 +309,7 @@ We conducted systematic ablations to isolate component contributions:
 
 ---
 
-## 📝 Repository Structure
 
-```
-BLEACH/
-├── data/
-│   ├── preprocessing.py          # Data cleaning and preparation
-│   └── dataset_stats.py          # Dataset statistics
-├── model/
-│   ├── bleach_model.py           # BLEACH architecture (Portion 2)
-│   ├── moe_layers.py             # MoE components
-│   ├── attention.py              # Multi-head attention + RoPE
-│   └── config.py                 # Model configuration
-├── training/
-│   ├── train.py                  # Training loop (Portion 3)
-│   ├── data_loader.py            # Balanced sampling (Portion 1)
-│   └── losses.py                 # R-Drop + load balance losses
-├── evaluation/
-│   ├── evaluate.py               # Evaluation pipeline (Portion 4)
-│   ├── routing_analysis.py       # Expert routing analysis
-│   └── visualization.py          # Plotting utilities
-├── checkpoints/                  # Saved model checkpoints
-├── figures/                      # Generated visualizations
-├── results/                      # Evaluation JSON outputs
-├── requirements.txt              # Python dependencies
-├── README.md                     # This file
-└── LICENSE                       # MIT License
-```
-
----
 
 ## 🎯 Use Cases
 
@@ -464,7 +389,6 @@ For questions, issues, or collaborations, please:
 
 <div align="center">
 
-**Made with ❤️ for the Bangla NLP community**
 
 [⬆ Back to Top](#bleach-bangla-language-expert-adaptive-corpus-handler)
 
