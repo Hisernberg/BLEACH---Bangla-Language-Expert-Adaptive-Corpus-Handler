@@ -82,8 +82,5 @@ Expert dropout
 
 Optional 4-bit activation simulation
 
-Single-GPU only (no DeepSpeed / FSDP)
+Single-GPU T4 only (no DeepSpeed / FSDP)
 
-
-
-....
