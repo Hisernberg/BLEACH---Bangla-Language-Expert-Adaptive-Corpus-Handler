@@ -16,14 +16,7 @@
 
 ---
 
-## 📰 News
 
-- **[Jan 2025]** 🎉 BLEACH paper accepted at [Conference Name]!
-- **[Jan 2025]** 🚀 Released BLEACH-117M model achieving 8.23 perplexity on Bangla dialects
-- **[Jan 2025]** 📊 Released preprocessed BanglaDial-Vashantor dataset with 25.2K dialectal samples
-- **[Dec 2024]** 🏗️ Initial code and model checkpoints released
-
----
 
 ## 🌟 Highlights
 
