@@ -323,7 +323,7 @@ def setup_data_pipeline():
         pin_memory=DataConfig.PIN_MEMORY
     )
 
-    # 3. Sanity check
+
     print("\n[3/4] Running sanity check...")
     batch = next(iter(train_loader))
     print("\nBatch tensor shapes:")
@@ -341,14 +341,12 @@ def setup_data_pipeline():
     print(f"  Max: {seq_lengths.max().item()}")
     print(f"  Mean: {seq_lengths.float().mean().item():.1f}")
 
-    # 4. Save outputs
+ 
     print("\n[4/4] Saving outputs...")
 
-    # Save tokenizer
     tokenizer.save_pretrained("./bangla_tokenizer")
     print("✓ Tokenizer saved to ./bangla_tokenizer")
 
-    # Save dialect mapping
     with open("dialect_to_id.json", "w") as f:
         json.dump(DataConfig.DIALECT_TO_ID, f, indent=2)
     print("✓ Dialect mapping saved to dialect_to_id.json")
@@ -360,15 +358,12 @@ def setup_data_pipeline():
     return tokenizer, train_loader, val_loader, test_loader
 
 
-# ============================================================================
-# USAGE EXAMPLE
-# ============================================================================
+
 
 if __name__ == "__main__":
-    # Run setup
+    
     tokenizer, train_loader, val_loader, test_loader = setup_data_pipeline()
 
-    # Example: iterate through a few batches
     print("\n\nIterating through 3 training batches...")
     for i, batch in enumerate(train_loader):
         if i >= 3:
@@ -390,18 +385,16 @@ from typing import Optional, Tuple, Dict
 import math
 
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
+
 
 class ModelConfig:
     """Model hyperparameters for ~55M params"""
-    # Architecture
-    d_model = 512              # Hidden dimension
-    n_layers = 6               # Transformer blocks
-    n_heads = 8                # Attention heads
-    d_head = 64                # Per-head dimension (512/8)
-    d_ff = 1280                # FFN intermediate dimension
+   
+ d_model = 512           
+ n_layers = 6           
+       n_heads = 8               
+    d_head = 64              
+  d_ff = 1280                
 
     # MoE
     n_experts = 5              # Number of expert FFNs
