@@ -6,11 +6,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Hugging Face](https://img.shields.io/badge/🤗-Models-yellow)](https://huggingface.co/BLEACH)
+
 
 **State-of-the-art Sparse Mixture-of-Experts Language Model for Bangla Dialect Modeling**
 
-[Paper](https://arxiv.org/abs/XXXX.XXXXX) | [Models](https://huggingface.co/BLEACH) | [Demo](https://huggingface.co/spaces/BLEACH/demo) | [Datasets](https://huggingface.co/datasets/BLEACH)
+[Paper](https://arxiv.org/abs/XXXX.XXXXX)(Comming soon) | [Models](https://huggingface.co/BLEACH) | [Demo](https://huggingface.co/spaces/BLEACH/demo) | [Datasets](https://www.kaggle.com/code/nabidnur/preprocessing)
 
 </div>
 
@@ -18,29 +18,29 @@
 
 
 
-## 🌟 Highlights
+##  Highlights
 
 BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** specifically designed for modeling five major Bangla dialects:
 
-✨ **State-of-the-Art Performance**
+**State-of-the-Art Performance**
 - **8.23 perplexity** on Bangla dialect modeling (best-in-class)
 - **71% better** than mBERT, **63% better** than BanglaBERT
 - **34% better** than BanglaLLaMA-7B (with 60× fewer parameters)
 - **11% better** than DeepSeek-V3 (671B) on Bangla
 
-🎯 **Dialect-Aware Architecture**
+**Dialect-Aware Architecture**
 - First model with explicit multi-dialect support (5 dialects)
 - **93.7% macro-averaged F1** across dialectal varieties
 - Interpretable expert routing revealing linguistic patterns
 - Balanced performance across all dialects (6.35% max gap)
 
-⚡ **Exceptional Efficiency**
+**Exceptional Efficiency**
 - **83 tokens/sec** inference (1.76× faster than dense baselines)
 - **1.8 GB memory** footprint (38% less than comparable models)
 - **$2.17 training cost** on single T4 GPU (6.2 hours)
 - Runs on consumer hardware (mobile/edge deployable)
 
-🏗️ **Novel Architecture**
+**Novel Architecture**
 - Sparse MoE with Top-1 routing (40% active parameters per token)
 - SwiGLU activations + RoPE positional encodings
 - R-Drop consistency regularization
@@ -48,7 +48,7 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 
 ---
 
-## 📊 Quick Results
+## Quick Results
 
 ### Performance Comparison
 
@@ -76,12 +76,12 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 
 
 
-## 📚 Dataset Preparation
+##  Dataset Preparation
 
 ### Download Datasets
 
-1. **BanglaDial**: [Download from Kaggle](https://www.kaggle.com/datasets/bangladiel)
-2. **Vashantor**: [Download from Kaggle](https://www.kaggle.com/datasets/vashantor010)
+1. **BanglaDial**: [Download from Kaggle](https://www.kaggle.com/datasets/nabidnur/bangladiel)
+2. **Vashantor**: [Download from Kaggle](https://www.kaggle.com/datasets/nabidnur/vashantor010)
 
 ### Dialect Distribution
 
