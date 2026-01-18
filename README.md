@@ -83,28 +83,6 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 1. **BanglaDial**: [Download from Kaggle](https://www.kaggle.com/datasets/bangladiel)
 2. **Vashantor**: [Download from Kaggle](https://www.kaggle.com/datasets/vashantor010)
 
-### Preprocessing
-
-```bash
-# Run preprocessing pipeline
-python preprocessing.py
-```
-
-This will:
-- Clean and normalize Bangla text
-- Remove emojis, URLs, and English-only sentences
-- Deduplicate samples
-- Create train/val/test splits (70/15/15)
-- Generate visualizations in `./viz_outputs/`
-
-**Output files:**
-```
-cleaned_bangla_train.csv     # 17,630 samples
-cleaned_bangla_val.csv       #  3,779 samples
-cleaned_bangla_test.csv      #  3,779 samples
-dataset_summary.csv          # Statistics
-```
-
 ### Dialect Distribution
 
 | Split | Chittagong | Barisal | Sylhet | Mymensingh | Noakhali | Total |
@@ -119,11 +97,6 @@ dataset_summary.csv          # Statistics
 
 ### Full Training Pipeline
 
-```bash
-# Run complete training (Portions 1-3)
-python train.py
-```
-
 **Training Configuration:**
 - **Optimizer**: AdamW (lr=3e-4, weight_decay=0.1)
 - **Schedule**: Cosine annealing with 1,000-step warmup
@@ -131,7 +104,6 @@ python train.py
 - **Epochs**: 20
 - **GPU**: Single NVIDIA T4 (16GB)
 - **Time**: ~6.2 hours
-- **Cost**: ~$2.17 (cloud GPU pricing)
 
 ### Training Losses
 
