@@ -43,9 +43,7 @@ class DataConfig:
         "Batch size should be divisible by number of dialects for perfect balancing"
 
 
-# ============================================================================
-# DATASET CLASS
-# ============================================================================
+
 
 class BanglaDialectDataset(Dataset):
     """
