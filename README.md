@@ -196,24 +196,6 @@ python evaluate.py
 | Epoch 10 | 4,000 | 9.54 | [Link](#) | 460 MB |
 | Epoch 5 | 2,000 | 11.69 | [Link](#) | 460 MB |
 
-### Load Checkpoint
-
-```python
-import torch
-
-# Load best checkpoint
-checkpoint = torch.load("./checkpoints/checkpoint_best.pt")
-
-# Extract components
-model.load_state_dict(checkpoint["model"])
-optimizer.load_state_dict(checkpoint["optimizer"])
-scheduler.load_state_dict(checkpoint["scheduler"])
-
-print(f"Loaded checkpoint from step {checkpoint['step']}")
-print(f"Best validation loss: {checkpoint['best_val']:.4f}")
-```
-
----
 
 ## 🔬 Ablation Studies
 
@@ -248,20 +230,6 @@ BLEACH is designed for:
 
 ---
 
-## 📖 Citation
-
-If you use BLEACH in your research, please cite our paper:
-
-```bibtex
-@article{bleach2024,
-  title={BLEACH: Bangla Language Expert Adaptive Corpus Handler - A Sparse Mixture-of-Experts Approach to Multi-Dialectal Language Modeling},
-  author={[Your Name] and [Co-authors]},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2024}
-}
-```
-
----
 
 ## 🤝 Contributing
 
@@ -280,38 +248,7 @@ We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
-
-## 🙏 Acknowledgments
-
-- **Datasets**: BanglaDial and Vashantor teams for providing dialectal corpora
-- **Tokenizer**: [sagorsarker/bangla-bert-base](https://huggingface.co/sagorsarker/bangla-bert-base) for Bangla tokenization
-- **Infrastructure**: Google Colab for providing free GPU resources
-- **Inspiration**: Switch Transformers, GShard, and DeepSeek-V3 for MoE architecture insights
-
----
-
-## 📧 Contact
-
-- **Author**: [Your Name]
-- **Email**: [your.email@example.com]
-- **GitHub**: [@Hisernberg](https://github.com/Hisernberg)
-- **Twitter**: [@YourHandle](https://twitter.com/yourhandle)
-
-For questions, issues, or collaborations, please:
-1. Open an [issue](https://github.com/Hisernberg/BLEACH---Bangla-Language-Expert-Adaptive-Corpus-Handler/issues)
-2. Start a [discussion](https://github.com/Hisernberg/BLEACH---Bangla-Language-Expert-Adaptive-Corpus-Handler/discussions)
-3. Email directly for sensitive inquiries
-
----
-
-## ⭐ Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Hisernberg/BLEACH---Bangla-Language-Expert-Adaptive-Corpus-Handler&type=Date)](https://star-history.com/#Hisernberg/BLEACH---Bangla-Language-Expert-Adaptive-Corpus-Handler&Date)
-
----
-
-<div align="center">
+--
 
 
 [⬆ Back to Top](#bleach-bangla-language-expert-adaptive-corpus-handler)
