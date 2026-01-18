@@ -93,7 +93,7 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 
 ---
 
-## 🎓 Training
+## Training
 
 ### Full Training Pipeline
 
@@ -129,7 +129,7 @@ L_total = L_LM + λ_balance * L_balance + α_RDrop * L_RDrop
 
 ---
 
-## 📈 Evaluation
+## Evaluation
 
 ### Run Comprehensive Evaluation
 
@@ -158,7 +158,7 @@ python evaluate.py
 
 ---
 
-## 📦 Model Checkpoints
+##  Model Checkpoints
 
 ### Available Checkpoints
 
@@ -169,7 +169,7 @@ python evaluate.py
 | Epoch 5 | 2,000 | 11.69 | [Link](#) | 460 MB |
 
 
-## 🔬 Ablation Studies
+##  Ablation Studies
 
 We conducted systematic ablations to isolate component contributions:
 
@@ -189,7 +189,7 @@ We conducted systematic ablations to isolate component contributions:
 
 
 
-## 🎯 Use Cases
+##  Use Cases
 
 BLEACH is designed for:
 
@@ -203,7 +203,7 @@ BLEACH is designed for:
 ---
 
 
-## 🤝 Contributing
+##  Contributing
 
 We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.md) for details.
 
@@ -216,7 +216,7 @@ We welcome contributions! Please see our [contributing guidelines](CONTRIBUTING.
 
 ---
 
-## 📜 License
+##  License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
