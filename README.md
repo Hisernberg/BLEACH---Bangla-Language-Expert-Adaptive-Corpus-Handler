@@ -73,6 +73,12 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 
 ---
 
+Dialect Name	Perplexity	Dialect specialization
+Chittagong	8.03	Expert2(28.2%)
+Barishal	8.13	Expert1(28.9%)
+Sylhet	8.47	Expert2 (28.4%)
+Mymensingh	8.51	Expert1 (32.3%)
+Noakhali	8.54	Expert2(27.4%)
 
 
 
