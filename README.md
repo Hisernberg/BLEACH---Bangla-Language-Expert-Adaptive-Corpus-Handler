@@ -10,7 +10,7 @@
 
 **State-of-the-art Sparse Mixture-of-Experts Language Model for Bangla Dialect Modeling**
 
-[Paper](https://arxiv.org/abs/XXXX.XXXXX)(Comming soon) | [Models](https://huggingface.co/BLEACH) | [Demo]([https://huggingface.co/spaces/BLEACH/demo](https://colab.research.google.com/drive/1hUa4QGQPwwfqxh7rXyJ46f3MBEB7u8Y2)) | [Datasets](https://www.kaggle.com/code/nabidnur/preprocessing)
+[Paper](https://arxiv.org/abs/XXXX.XXXXX)(Comming soon) | [Models](https://huggingface.co/BLEACH) | [Demo]((https://colab.research.google.com/drive/1hUa4QGQPwwfqxh7rXyJ46f3MBEB7u8Y2)) | [Datasets](https://www.kaggle.com/code/nabidnur/preprocessing)
 
 </div>
 
