@@ -396,26 +396,23 @@ class ModelConfig:
     d_head = 64              
   d_ff = 1280                
 
-    # MoE
-    n_experts = 5              # Number of expert FFNs
-    expert_capacity_factor = 1.25  # GShard capacity factor
-    expert_dropout = 0.1       # Dropout in experts
+ 
+    n_experts = 5              
+    expert_capacity_factor = 1.25  
+    expert_dropout = 0.1       
 
-    # Training
+
     dropout = 0.1
-    load_balance_weight = 0.01  # Auxiliary loss weight
+    load_balance_weight = 0.01  
 
-    # Vocabulary (from Portion 1)
-    vocab_size = 32000         # From bangla-bert tokenizer
+  
+    vocab_size = 32000      
     max_seq_len = 512
 
-    # Efficiency
+
     use_gradient_checkpointing = True
 
 
-# ============================================================================
-# ROTARY POSITIONAL EMBEDDINGS (RoPE)
-# ============================================================================
 
 class RotaryEmbedding(nn.Module):
     """
@@ -428,11 +425,11 @@ class RotaryEmbedding(nn.Module):
         super().__init__()
         self.dim = dim
 
-        # Precompute frequencies
+     
         inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2).float() / dim))
         self.register_buffer("inv_freq", inv_freq)
 
-        # Cache for efficiency
+   
         self._seq_len_cached = 0
         self._cos_cached = None
         self._sin_cached = None
@@ -444,7 +441,7 @@ class RotaryEmbedding(nn.Module):
             t = torch.arange(seq_len, device=device, dtype=self.inv_freq.dtype)
             freqs = torch.outer(t, self.inv_freq)
             emb = torch.cat([freqs, freqs], dim=-1)
-            self._cos_cached = emb.cos()[None, None, :, :]  # [1, 1, S, dim]
+            self._cos_cached = emb.cos()[None, None, :, :]  
             self._sin_cached = emb.sin()[None, None, :, :]
 
     def forward(self, q: torch.Tensor, k: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -461,7 +458,7 @@ class RotaryEmbedding(nn.Module):
         cos = self._cos_cached[:, :, :seq_len, :].to(q.dtype)
         sin = self._sin_cached[:, :, :seq_len, :].to(q.dtype)
 
-        # Apply rotation
+      
         q_rot = (q * cos) + (self._rotate_half(q) * sin)
         k_rot = (k * cos) + (self._rotate_half(k) * sin)
 
@@ -473,10 +470,6 @@ class RotaryEmbedding(nn.Module):
         x1, x2 = x.chunk(2, dim=-1)
         return torch.cat([-x2, x1], dim=-1)
 
-
-# ============================================================================
-# MULTI-HEAD ATTENTION
-# ============================================================================
 
 class MultiHeadAttention(nn.Module):
     """
@@ -492,13 +485,13 @@ class MultiHeadAttention(nn.Module):
         self.d_head = config.d_model // config.n_heads
         self.scale = self.d_head ** -0.5
 
-        # QKV projections
+      
         self.q_proj = nn.Linear(config.d_model, config.d_model, bias=False)
         self.k_proj = nn.Linear(config.d_model, config.d_model, bias=False)
         self.v_proj = nn.Linear(config.d_model, config.d_model, bias=False)
         self.out_proj = nn.Linear(config.d_model, config.d_model, bias=False)
 
-        # RoPE
+
         self.rope = RotaryEmbedding(self.d_head, config.max_seq_len)
 
         self.dropout = nn.Dropout(config.dropout)
@@ -517,45 +510,32 @@ class MultiHeadAttention(nn.Module):
         """
         B, S, D = x.shape
 
-        # Project to Q, K, V
+  
         q = self.q_proj(x).view(B, S, self.n_heads, self.d_head).transpose(1, 2)
         k = self.k_proj(x).view(B, S, self.n_heads, self.d_head).transpose(1, 2)
         v = self.v_proj(x).view(B, S, self.n_heads, self.d_head).transpose(1, 2)
-        # Shape: [B, n_heads, S, d_head]
+   
 
-        # Apply RoPE
         q, k = self.rope(q, k)
 
-        # Attention scores
         attn_scores = torch.matmul(q, k.transpose(-2, -1)) * self.scale
-        # Shape: [B, n_heads, S, S]
-
-        # Apply attention mask (convert 0/1 to -inf/0)
+ 
         if attention_mask is not None:
-            attn_mask = attention_mask[:, None, None, :]  # [B, 1, 1, S]
+            attn_mask = attention_mask[:, None, None, :]  
             attn_scores = attn_scores.masked_fill(attn_mask == 0, float('-inf'))
 
-        # Causal mask (for language modeling)
         causal_mask = torch.triu(torch.ones(S, S, device=x.device), diagonal=1).bool()
         attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
 
-        # Softmax and dropout
-        attn_probs = F.softmax(attn_scores, dim=-1)
+       
+          attn_probs = F.softmax(attn_scores, dim=-1)
         attn_probs = self.dropout(attn_probs)
-
-        # Weighted sum of values
-        out = torch.matmul(attn_probs, v)  # [B, n_heads, S, d_head]
-
-        # Concatenate heads and project
+        out = torch.matmul(attn_probs, v) 
         out = out.transpose(1, 2).contiguous().view(B, S, D)
         out = self.out_proj(out)
 
         return out
 
-
-# ============================================================================
-# EXPERT FFN (SwiGLU)
-# ============================================================================
 
 class ExpertFFN(nn.Module):
     """
@@ -580,16 +560,10 @@ class ExpertFFN(nn.Module):
         """
         gate = self.gate_proj(x)
         up = self.up_proj(x)
-        hidden = F.silu(gate) * up  # SwiGLU activation
+        hidden = F.silu(gate) * up  
         hidden = self.dropout(hidden)
         out = self.down_proj(hidden)
         return out
-
-
-# ============================================================================
-# ROUTER
-# ============================================================================
-
 class Router(nn.Module):
     """
     Top-1 router for sparse MoE
@@ -610,21 +584,16 @@ class Router(nn.Module):
             gate_values: [n_tokens] - confidence scores
             router_probs: [n_tokens, n_experts] - full probability distribution
         """
-        # Compute router logits
-        router_logits = self.linear(x)  # [n_tokens, n_experts]
+      
+        router_logits = self.linear(x) 
 
-        # Softmax to get probabilities
+
         router_probs = F.softmax(router_logits, dim=-1)
 
-        # Top-1 selection
+      
         gate_values, expert_indices = torch.max(router_probs, dim=-1)
 
         return expert_indices, gate_values, router_probs
-
-
-# ============================================================================
-# SPARSE MoE LAYER
-# ============================================================================
 
 class SparseMoELayer(nn.Module):
     """
@@ -637,10 +606,8 @@ class SparseMoELayer(nn.Module):
         self.n_experts = config.n_experts
         self.capacity_factor = config.expert_capacity_factor
 
-        # Router
         self.router = Router(config)
 
-        # Experts
         self.experts = nn.ModuleList([
             ExpertFFN(config) for _ in range(config.n_experts)
         ])
@@ -655,52 +622,40 @@ class SparseMoELayer(nn.Module):
         """
         B, S, D = x.shape
 
-        # Flatten for routing
-        x_flat = x.view(-1, D)  # [B*S, d_model]
+        x_flat = x.view(-1, D) 
         n_tokens = x_flat.shape[0]
 
-        # Route tokens
         expert_indices, gate_values, router_probs = self.router(x_flat)
 
-        # Compute capacity
         capacity = int(self.capacity_factor * n_tokens / self.n_experts)
+                     output_flat = torch.zeros_like(x_flat)
 
-        # Process each expert
-        output_flat = torch.zeros_like(x_flat)
-
-        for expert_id in range(self.n_experts):
-            # Find tokens for this expert
+   for expert_id in range(self.n_experts):
+           
             expert_mask = expert_indices == expert_id
             expert_tokens = x_flat[expert_mask]
             expert_gates = gate_values[expert_mask]
 
-            # Handle capacity
+    
             if expert_tokens.shape[0] > capacity:
-                # Keep tokens with highest gate values
                 _, top_indices = torch.topk(expert_gates, capacity)
                 expert_tokens = expert_tokens[top_indices]
                 expert_gates = expert_gates[top_indices]
 
-                # Update mask
+             
                 all_indices = torch.where(expert_mask)[0]
                 kept_indices = all_indices[top_indices]
                 expert_mask = torch.zeros_like(expert_mask)
                 expert_mask[kept_indices] = True
 
-            # Process through expert
             if expert_tokens.shape[0] > 0:
                 expert_out = self.experts[expert_id](expert_tokens)
 
-                # Scale by gate values
                 expert_out = expert_out * expert_gates.unsqueeze(-1)
 
-                # Scatter back to output
                 output_flat[expert_mask] = expert_out
 
-        # Reshape back
         output = output_flat.view(B, S, D)
-
-        # Compute load balancing loss
         aux_loss = self._compute_load_balance_loss(
             router_probs, expert_indices, n_tokens
         )
@@ -716,25 +671,16 @@ class SparseMoELayer(nn.Module):
         """
         Compute auxiliary loss to encourage balanced expert usage
         """
-        # Importance: sum of routing probabilities
-        importance = router_probs.sum(dim=0) / n_tokens  # [n_experts]
-
-        # Load: fraction of tokens routed to each expert
+      
+        importance = router_probs.sum(dim=0) / n_tokens 
         expert_counts = torch.bincount(
             expert_indices,
             minlength=self.n_experts
         ).float()
-        load = expert_counts / n_tokens  # [n_experts]
-
-        # Loss: encourages importance ≈ load ≈ 1/n_experts
+        load = expert_counts / n_tokens 
         loss = self.n_experts * torch.sum(importance * load)
 
         return loss
-
-
-# ============================================================================
-# TRANSFORMER BLOCK
-# ============================================================================
 
 class TransformerBlock(nn.Module):
     """
@@ -761,25 +707,16 @@ class TransformerBlock(nn.Module):
             output: [batch, seq_len, d_model]
             aux_loss_dict: Auxiliary losses
         """
-        # Self-attention with residual
         residual = x
         x = self.ln1(x)
         x = self.attn(x, attention_mask)
         x = residual + x
-
-        # MoE FFN with residual
         residual = x
         x = self.ln2(x)
         x, aux_loss = self.moe(x)
         x = residual + x
 
         return x, aux_loss
-
-
-# ============================================================================
-# MAIN MODEL
-# ============================================================================
-
 class BLEACHModel(nn.Module):
     """
     BLEACH: Bangla Language Expert Architecture with Conditional Hierarchies
@@ -790,26 +727,17 @@ class BLEACHModel(nn.Module):
         super().__init__()
         self.config = config
 
-        # Token embeddings
         self.embeddings = nn.Embedding(config.vocab_size, config.d_model)
         self.embed_dropout = nn.Dropout(config.dropout)
 
-        # Transformer blocks
         self.blocks = nn.ModuleList([
             TransformerBlock(config) for _ in range(config.n_layers)
         ])
-
-        # Output head
         self.ln_f = nn.LayerNorm(config.d_model)
         self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
-
-        # Tie embeddings (weight sharing)
         self.lm_head.weight = self.embeddings.weight
-
-        # Initialize weights
         self.apply(self._init_weights)
 
-        # Print parameter count
         self._print_param_count()
 
     def _init_weights(self, module):
@@ -833,21 +761,18 @@ class BLEACHModel(nn.Module):
         print("BLEACH MODEL PARAMETER COUNT")
         print("="*80)
 
-        # Embeddings
         embed_params = sum(p.numel() for p in self.embeddings.parameters())
         print(f"Embeddings: {embed_params:,} ({embed_params/1e6:.2f}M)")
 
-        # Per block
         block_params = sum(p.numel() for p in self.blocks[0].parameters())
         print(f"Per Transformer Block: {block_params:,} ({block_params/1e6:.2f}M)")
         print(f"  - Attention: {sum(p.numel() for p in self.blocks[0].attn.parameters()):,}")
         print(f"  - MoE Layer: {sum(p.numel() for p in self.blocks[0].moe.parameters()):,}")
 
-        # All blocks
+
         all_blocks = sum(p.numel() for p in self.blocks.parameters())
         print(f"All Blocks (×{self.config.n_layers}): {all_blocks:,} ({all_blocks/1e6:.2f}M)")
 
-        # LM head (shared with embeddings, so counted once)
         print(f"LM Head: Shared with embeddings")
 
         print(f"\nTotal Parameters: {total:,} ({total/1e6:.2f}M)")
@@ -872,17 +797,14 @@ class BLEACHModel(nn.Module):
                 - loss: scalar (if labels provided)
                 - load_balance_loss: scalar auxiliary loss
         """
-        # Embed tokens
-        x = self.embeddings(input_ids)  # [B, S, d_model]
+     
+        x = self.embeddings(input_ids) 
         x = self.embed_dropout(x)
-
-        # Collect auxiliary losses
+    
         total_load_balance_loss = 0.0
 
-        # Pass through transformer blocks
         for block in self.blocks:
             if self.config.use_gradient_checkpointing and self.training:
-                # Gradient checkpointing to save memory
                 x, aux_loss = torch.utils.checkpoint.checkpoint(
                     block, x, attention_mask, use_reentrant=False
                 )
@@ -891,16 +813,11 @@ class BLEACHModel(nn.Module):
 
             total_load_balance_loss += aux_loss["load_balance_loss"]
 
-        # Final layer norm
         x = self.ln_f(x)
 
-        # LM head
-        logits = self.lm_head(x)  # [B, S, vocab_size]
-
-        # Compute loss if labels provided
+        logits = self.lm_head(x)  
         loss = None
         if labels is not None:
-            # Flatten for cross entropy
             shift_logits = logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
 
@@ -910,7 +827,6 @@ class BLEACHModel(nn.Module):
                 ignore_index=-100
             )
 
-            # Add load balancing loss
             loss = loss + self.config.load_balance_weight * total_load_balance_loss
 
         return {
@@ -939,38 +855,29 @@ class BLEACHModel(nn.Module):
             [batch, seq_len + max_new_tokens]
         """
         for _ in range(max_new_tokens):
-            # Forward pass
-            outputs = self.forward(input_ids, attention_mask)
+            
+     outputs = self.forward(input_ids, attention_mask)
             logits = outputs["logits"]
 
-            # Get logits for last position
             next_token_logits = logits[:, -1, :] / temperature
 
-            # Top-k sampling
             if top_k is not None:
                 v, _ = torch.topk(next_token_logits, min(top_k, next_token_logits.size(-1)))
                 next_token_logits[next_token_logits < v[:, [-1]]] = float('-inf')
 
-            # Sample
+     
             probs = F.softmax(next_token_logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)
 
-            # Append to sequence
-            input_ids = torch.cat([input_ids, next_token], dim=1)
-
-            # Update attention mask
+        input_ids = torch.cat([input_ids, next_token], dim=1)
             if attention_mask is not None:
                 attention_mask = torch.cat([
                     attention_mask,
-                    torch.ones((attention_mask.shape[0], 1), device=attention_mask.device)
+      torch.ones((attention_mask.shape[0], 1), device=attention_mask.device)
                 ], dim=1)
 
         return input_ids
 
-
-# ============================================================================
-# MODEL FACTORY
-# ============================================================================
 
 def create_bleach_model(
     vocab_size: int = 32000,
@@ -993,25 +900,19 @@ def create_bleach_model(
     return model
 
 
-# ============================================================================
-# TESTING / USAGE
-# ============================================================================
 
 if __name__ == "__main__":
     print("Creating BLEACH MoE model...")
 
-    # Create model
     config = ModelConfig()
     model = BLEACHModel(config)
 
-    # Move to GPU if available
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
 
     print(f"\nModel on device: {device}")
     print(f"Using gradient checkpointing: {config.use_gradient_checkpointing}")
 
-    # Test forward pass
     print("\n" + "="*80)
     print("TESTING FORWARD PASS")
     print("="*80)
@@ -1019,7 +920,6 @@ if __name__ == "__main__":
     batch_size = 4
     seq_len = 32
 
-    # Dummy inputs
     input_ids = torch.randint(0, config.vocab_size, (batch_size, seq_len), device=device)
     attention_mask = torch.ones(batch_size, seq_len, device=device)
     labels = torch.randint(0, config.vocab_size, (batch_size, seq_len), device=device)
@@ -1028,17 +928,14 @@ if __name__ == "__main__":
     print(f"  input_ids: {input_ids.shape}")
     print(f"  attention_mask: {attention_mask.shape}")
     print(f"  labels: {labels.shape}")
-
-    # Forward pass
     with torch.cuda.amp.autocast(enabled=True):
-        outputs = model(input_ids, attention_mask, labels)
+       outputs = model(input_ids, attention_mask, labels)
 
     print(f"\nOutput shapes:")
     print(f"  logits: {outputs['logits'].shape}")
     print(f"  loss: {outputs['loss'].item():.4f}")
     print(f"  load_balance_loss: {outputs['load_balance_loss'].item():.4f}")
 
-    # Test generation
     print("\n" + "="*80)
     print("TESTING GENERATION")
     print("="*80)
@@ -1058,9 +955,7 @@ Portion 3: Production-Grade Training Loop for BLEACH MoE
 Fully fixed and integrated with Portion 1 & 2
 """
 
-# =============================================================================
-# PATH SAFETY (IMPORTANT FOR COLAB / NOTEBOOK / SCRIPT)
-# =============================================================================
+
 
 import os
 import sys
@@ -1069,9 +964,6 @@ PROJECT_ROOT = os.getcwd()
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# =============================================================================
-# STANDARD IMPORTS
-# =============================================================================
 
 import math
 import time
@@ -1086,12 +978,6 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 import numpy as np
 
-# =============================================================================
-# IMPORT REAL PIPELINE & MODEL (PORTION 1 & 2)
-# =============================================================================
-# =============================================================================
-# SAFETY CHECK: ENSURE PORTION 1 & 2 ARE LOADED
-# =============================================================================
 
 try:
     setup_data_pipeline
@@ -1109,9 +995,7 @@ except NameError:
         "Please run Portion 2 cell before Portion 3."
     )
 
-# =============================================================================
-# TRAINING CONFIG
-# =============================================================================
+
 
 class TrainingConfig:
     learning_rate = 3e-4
@@ -1142,10 +1026,6 @@ class TrainingConfig:
     enable_oom_recovery = True
 
 
-# =============================================================================
-# LR SCHEDULER
-# =============================================================================
-
 def get_cosine_schedule_with_warmup(optimizer, warmup_steps, total_steps, min_lr_ratio):
     def lr_lambda(step):
         if step < warmup_steps:
@@ -1156,10 +1036,6 @@ def get_cosine_schedule_with_warmup(optimizer, warmup_steps, total_steps, min_lr
     return LambdaLR(optimizer, lr_lambda)
 
 
-# =============================================================================
-# R-DROP
-# =============================================================================
-
 def compute_rdrop_loss(logits1, logits2, alpha):
     log_p1 = F.log_softmax(logits1, dim=-1)
     log_p2 = F.log_softmax(logits2, dim=-1)
@@ -1167,10 +1043,6 @@ def compute_rdrop_loss(logits1, logits2, alpha):
     kl2 = F.kl_div(log_p2, log_p1.exp(), reduction="batchmean")
     return alpha * 0.5 * (kl1 + kl2)
 
-
-# =============================================================================
-# TRAIN STEP
-# =============================================================================
 
 def train_step(model, batch, optimizer, scaler, cfg, accumulation_step):
     model.train()
@@ -1207,9 +1079,6 @@ def train_step(model, batch, optimizer, scaler, cfg, accumulation_step):
     }
 
 
-# =============================================================================
-# VALIDATION
-# =============================================================================
 
 @torch.no_grad()
 def validate(model, loader, device, max_batches: Optional[int] = None):
@@ -1240,9 +1109,6 @@ def validate(model, loader, device, max_batches: Optional[int] = None):
     }
 
 
-# =============================================================================
-# CHECKPOINT
-# =============================================================================
 
 def save_checkpoint(model, optimizer, scheduler, scaler,
                     epoch, step, best_val,
@@ -1262,10 +1128,6 @@ def save_checkpoint(model, optimizer, scheduler, scaler,
         "val_losses": val_losses
     }, Path(cfg.checkpoint_dir) / name)
 
-
-# =============================================================================
-# MAIN TRAINING LOOP
-# =============================================================================
 
 def train(model, train_loader, val_loader, cfg: TrainingConfig):
 
@@ -1343,7 +1205,6 @@ def train(model, train_loader, val_loader, cfg: TrainingConfig):
 
         print(f"\nEpoch {epoch + 1}/{cfg.num_epochs} complete\n")
 
-    # FINAL VALIDATION
     print("\n" + "=" * 80)
     print("FINAL VALIDATION")
     print("=" * 80)
@@ -1366,10 +1227,6 @@ def train(model, train_loader, val_loader, cfg: TrainingConfig):
 
     return model
 
-
-# =============================================================================
-# ENTRY POINT
-# =============================================================================
 
 if __name__ == "__main__":
 
@@ -1403,30 +1260,20 @@ from pathlib import Path
 import json
 
 
-# ============================================================================
-# EVALUATION CONFIGURATION
-# ============================================================================
-
 class EvalConfig:
     """Evaluation hyperparameters"""
-    # Paths
+  
     checkpoint_path = "./checkpoints/checkpoint_best.pt"
     results_dir = "./results"
     figures_dir = "./figures"
 
-    # Analysis
-    max_samples = 1000  # For efficiency
+    max_samples = 1000  
     routing_confidence_threshold = 0.7
-
-    # Visualization
+ 
     figsize = (12, 8)
     dpi = 150
-    cmap = "YlOrRd"  # Colormap for heatmaps
+    cmap = "YlOrRd"  
 
-
-# ============================================================================
-# ROUTING HOOKS & COLLECTORS
-# ============================================================================
 
 class RoutingCollector:
     """
@@ -1439,11 +1286,10 @@ class RoutingCollector:
         self.n_layers = n_layers
         self.n_experts = n_experts
 
-        # Storage
-        self.routing_data = []  # List of dicts per batch
+      
+        self.routing_data = []  
         self.hooks = []
 
-        # Register hooks on routers
         for layer_idx, block in enumerate(model.blocks):
             hook = block.moe.router.register_forward_hook(
                 self._make_hook(layer_idx)
@@ -1453,19 +1299,18 @@ class RoutingCollector:
     def _make_hook(self, layer_idx: int):
         """Create hook function for specific layer"""
         def hook_fn(module, input, output):
-            # expected output = (expert_indices, gate_values, router_probs)
-            # Some implementations may return tuple length > 3; we handle safely.
+           
             if isinstance(output, tuple):
                 expert_indices = output[0]
                 gate_values = output[1] if len(output) > 1 else None
                 router_probs = output[2] if len(output) > 2 else None
             else:
-                # If output is a single tensor, assume it's expert indices.
+             
                 expert_indices = output
                 gate_values = None
                 router_probs = None
 
-            # Convert to CPU tensors for stable storage
+           
             entry = {
                 'layer': layer_idx,
                 'expert_indices': expert_indices.detach().cpu() if isinstance(expert_indices, torch.Tensor) else torch.tensor(expert_indices),
@@ -1519,12 +1364,11 @@ class RoutingCollector:
         all_gates = []
 
         for batch in self.routing_data:
-            # Each batch['layers'] is a list of routing entries created by hooks in forward order.
-            # Find the entry with matching layer index
+            
             layer_entries = [e for e in batch['layers'] if e['layer'] == layer_idx]
             if len(layer_entries) == 0:
                 continue
-            # There could be multiple entries for the same layer (depending on implementation); concatenate them
+         
             for entry in layer_entries:
                 all_indices.append(entry['expert_indices'].view(-1))
                 if entry['router_probs'].numel() > 0:
@@ -1533,7 +1377,7 @@ class RoutingCollector:
                     all_gates.append(entry['gate_values'].view(-1))
 
         if len(all_indices) == 0:
-            # No data collected for this layer
+         
             return {
                 'expert_distribution': [0.0] * self.n_experts,
                 'entropy': 0.0,
@@ -1541,35 +1385,30 @@ class RoutingCollector:
                 'total_tokens': 0
             }
 
-        # Concatenate all batches
-        all_indices = torch.cat(all_indices)  # 1D tensor
+   
+        all_indices = torch.cat(all_indices) 
         total_tokens = int(all_indices.numel())
 
-        # Expert usage distribution
+       
         expert_counts = torch.bincount(all_indices, minlength=self.n_experts).float()
         expert_dist = (expert_counts / (expert_counts.sum() + 1e-10)).cpu().numpy()
 
-        # Routing entropy (nats)
+     
         entropy = -np.sum(expert_dist * np.log(expert_dist + 1e-12))
 
-        # Average gate confidence
-        if len(all_gates) > 0:
+  if len(all_gates) > 0:
             all_gates = torch.cat(all_gates).float()
             avg_confidence = float(all_gates.mean().item())
         else:
             avg_confidence = 0.0
 
-        return {
-            'expert_distribution': [float(x) for x in expert_dist.tolist()],
+  return {
+         'expert_distribution': [float(x) for x in expert_dist.tolist()],
             'entropy': float(entropy),
             'avg_confidence': float(avg_confidence),
             'total_tokens': int(total_tokens)
         }
 
-
-# ============================================================================
-# PERPLEXITY EVALUATION
-# ============================================================================
 
 @torch.no_grad()
 def evaluate_perplexity(
@@ -1587,7 +1426,6 @@ def evaluate_perplexity(
     """
     model.eval()
 
-    # Storage
     total_loss = 0.0
     total_tokens = 0
 
@@ -1604,37 +1442,34 @@ def evaluate_perplexity(
         dialect_ids = batch.get("dialect_ids", None)
         labels = input_ids.clone()
 
-        # Forward pass
+       
         with torch.cuda.amp.autocast():
             outputs = model(input_ids, attention_mask, labels)
 
         loss = outputs["loss"]
         batch_tokens = int(attention_mask.sum().item())
 
-        # Accumulate overall
+ 
         total_loss += float(loss.item()) * batch_tokens
         total_tokens += batch_tokens
 
-        # Accumulate per-dialect
+   
         if per_dialect and dialect_ids is not None:
             for i in range(len(dialect_ids)):
                 dialect_id = int(dialect_ids[i].item())
                 dialect_name = id_to_dialect[dialect_id]
-
-                # Compute loss approximate for this sample (we use batch-level loss scaled by token counts)
-                sample_mask = attention_mask[i]
-                sample_tokens = int(sample_mask.sum().item())
+        
+      sample_mask = attention_mask[i]
+        sample_tokens = int(sample_mask.sum().item())
 
                 dialect_losses[dialect_name] += float(loss.item()) * sample_tokens
                 dialect_tokens[dialect_name] += sample_tokens
 
-    # Compute overall perplexity
     avg_loss = total_loss / (total_tokens + 1e-12)
     overall_ppl = math.exp(min(avg_loss, 20))
 
     results = {'overall': float(overall_ppl)}
 
-    # Compute per-dialect perplexity
     if per_dialect:
         for dialect in dialect_losses:
             dialect_loss = dialect_losses[dialect] / (dialect_tokens[dialect] + 1e-12)
@@ -1644,14 +1479,10 @@ def evaluate_perplexity(
     return results
 
 
-# ============================================================================
-# DIALECT-EXPERT AFFINITY ANALYSIS
-# ============================================================================
-
 def compute_dialect_expert_affinity(
     routing_collector: RoutingCollector,
     dialect_to_id: Dict[str, int],
-    layer_idx: int = -1  # -1 = last layer
+    layer_idx: int = -1 
 ) -> np.ndarray:
     """
     Compute affinity matrix: dialects × experts
@@ -1662,19 +1493,15 @@ def compute_dialect_expert_affinity(
     n_dialects = len(dialects)
     id_to_dialect = {v: k for k, v in dialect_to_id.items()}
 
-    # Initialize affinity matrix
+   
     affinity = np.zeros((n_dialects, n_experts), dtype=np.float64)
 
-    # Aggregate routing decisions
     for batch in routing_collector.routing_data:
-        dialect_ids = batch['dialect_ids']  # tensor length batch_size
+        dialect_ids = batch['dialect_ids']  
 
-        # Choose layer entry
-        # Find all entries for that layer in the batch
+
         if layer_idx == -1:
-            # pick final recorded layer index per-batch structure (assumes hooks append in increasing layer order)
             layer_entries = [e for e in batch['layers'] if isinstance(e, dict)]
-            # If there are multiple different layers recorded, pick the ones with max 'layer'
             if len(layer_entries) == 0:
                 continue
             max_layer = max(e['layer'] for e in layer_entries)
@@ -1683,19 +1510,14 @@ def compute_dialect_expert_affinity(
             layer_entries = [e for e in batch['layers'] if e['layer'] == layer_idx]
             if len(layer_entries) == 0:
                 continue
-
-        # Concatenate all entries (if multiple)
+     
         expert_indices = torch.cat([e['expert_indices'].view(-1) for e in layer_entries], dim=0)
 
-        # Now we need to split back per-sample: we assume tokens are stored in batch['tokens'] with shape [batch_size, seq_len]
         batch_size = int(dialect_ids.shape[0])
         tokens = batch['tokens']
         seq_len = int(tokens.shape[1])
-
-        # expert_indices should be batch_size * seq_len length
         if expert_indices.numel() != batch_size * seq_len:
-            # try to reshape by computing seq_len from expert_indices
-            seq_len_inferred = int(expert_indices.numel() // batch_size)
+              seq_len_inferred = int(expert_indices.numel() // batch_size)
             if seq_len_inferred * batch_size == expert_indices.numel():
                 seq_len = seq_len_inferred
             else:
@@ -1704,7 +1526,6 @@ def compute_dialect_expert_affinity(
 
         expert_indices = expert_indices.view(batch_size, seq_len)
 
-        # Count per dialect
         for i, dialect_id in enumerate(dialect_ids):
             dialect_idx = dialects.index(id_to_dialect[int(dialect_id.item())])
             sample_indices = expert_indices[i]
@@ -1713,15 +1534,10 @@ def compute_dialect_expert_affinity(
                 count = int((sample_indices == expert_id).sum().item())
                 affinity[dialect_idx, expert_id] += count
 
-    # Normalize by row (per dialect)
     row_sums = affinity.sum(axis=1, keepdims=True) + 1e-12
     affinity = affinity / row_sums
     return affinity
 
-
-# ============================================================================
-# ROUTING ENTROPY & CONFIDENCE
-# ============================================================================
 
 def compute_routing_entropy_per_layer(
     routing_collector: RoutingCollector
@@ -1737,11 +1553,6 @@ def compute_confidence_per_layer(
     stats = routing_collector.get_statistics()
     confidences = [layer['avg_confidence'] for layer in stats['per_layer']]
     return [float(x) for x in confidences]
-
-
-# ============================================================================
-# TOKEN-LEVEL ANALYSIS
-# ============================================================================
 
 def analyze_expert_token_distribution(
     routing_collector: RoutingCollector,
@@ -1770,7 +1581,6 @@ def analyze_expert_token_distribution(
         expert_indices = torch.cat([e['expert_indices'].view(-1) for e in layer_entries], dim=0)
         tokens = batch['tokens'].view(-1)
 
-        # Align lengths (if mismatch, trim to min)
         min_len = min(expert_indices.numel(), tokens.numel())
         expert_indices = expert_indices.view(-1)[:min_len]
         tokens = tokens.view(-1)[:min_len]
@@ -1783,7 +1593,6 @@ def analyze_expert_token_distribution(
 
     token_strings = {}
     for token_id, count in token_counts.most_common(top_k):
-        # tokenizer.decode expects list of ids; ensure int
         try:
             token_str = tokenizer.decode([int(token_id)])
         except Exception:
@@ -1791,12 +1600,6 @@ def analyze_expert_token_distribution(
         token_strings[token_str] = int(count)
 
     return token_strings
-
-
-# ============================================================================
-# VISUALIZATION FUNCTIONS
-# (unchanged from your original — kept for brevity)
-# ============================================================================
 
 def plot_perplexity_comparison(
     results: Dict[str, float],
@@ -1965,11 +1768,6 @@ def plot_comprehensive_analysis(routing_collector: RoutingCollector, perplexity_
         print(f"✓ Saved: {save_path}")
     plt.show()
 
-
-# ============================================================================
-# MAIN EVALUATION FUNCTION
-# ============================================================================
-
 def to_serializable(obj):
     """
     Recursively convert numpy / torch types into native Python types so json.dump works.
@@ -1988,7 +1786,6 @@ def to_serializable(obj):
         return to_serializable(obj.detach().cpu().numpy())
     if isinstance(obj, (float, int, str, bool)) or obj is None:
         return obj
-    # Fallback: convert to string
     return str(obj)
 
 
@@ -2015,7 +1812,7 @@ def run_comprehensive_evaluation(
     print("BLEACH MODEL EVALUATION")
     print("="*80)
 
-    # 1. PERPLEXITY
+
     print("\n[1/5] Computing perplexity...")
     perplexity_results = evaluate_perplexity(
         model, test_loader, device, per_dialect=True, dialect_to_id=dialect_to_id
@@ -2025,8 +1822,6 @@ def run_comprehensive_evaluation(
     print(f"  Overall: {perplexity_results['overall']:.2f}")
     for dialect in sorted([k for k in perplexity_results.keys() if k != 'overall']):
         print(f"  {dialect}: {perplexity_results[dialect]:.2f}")
-
-    # 2. ROUTING COLLECTION
     print("\n[2/5] Collecting routing statistics...")
     routing_collector = RoutingCollector(
         model,
@@ -2055,13 +1850,13 @@ def run_comprehensive_evaluation(
     total_tokens_analyzed = sum([layer['total_tokens'] for layer in routing_stats['per_layer']]) if len(routing_stats['per_layer'])>0 else 0
     print(f"  Total tokens analyzed (sum across layers): {total_tokens_analyzed:,}")
 
-    # 3. DIALECT-EXPERT AFFINITY
+ 
     print("\n[3/5] Computing dialect-expert affinity...")
     dialects = sorted(dialect_to_id.keys())
     affinity_matrix = compute_dialect_expert_affinity(
         routing_collector,
         dialect_to_id,
-        layer_idx=-1  # Final layer
+        layer_idx=-1 
     )
 
     print("\nDialect-Expert Affinity Matrix (Final Layer):")
@@ -2072,7 +1867,7 @@ def run_comprehensive_evaluation(
             row_str += f"  {affinity_matrix[i, j]:.2f}"
         print(row_str)
 
-    # 4. ENTROPY ANALYSIS
+   
     print("\n[4/5] Computing routing entropy...")
     entropies = compute_routing_entropy_per_layer(routing_collector)
     confidences = compute_confidence_per_layer(routing_collector)
@@ -2080,7 +1875,7 @@ def run_comprehensive_evaluation(
     for layer_idx in range(len(entropies)):
         print(f"  Layer {layer_idx}: Entropy={entropies[layer_idx]:.3f}, Confidence={confidences[layer_idx]:.3f}")
 
-    # 5. TOKEN-LEVEL ANALYSIS
+   
     print("\n[5/5] Analyzing token distribution per expert...")
     token_analysis = {}
     for expert_id in range(model.config.n_experts):
@@ -2099,7 +1894,7 @@ def run_comprehensive_evaluation(
         for token, count in list(tokens.items())[:5]:
             print(f"    {token:20s} → {count:6d}")
 
-    # VISUALIZATIONS
+
     print("\n" + "="*80)
     print("GENERATING VISUALIZATIONS")
     print("="*80)
@@ -2109,7 +1904,7 @@ def run_comprehensive_evaluation(
     plot_expert_usage_distribution(routing_collector, layer_idx=-1, save_path=f"{config.figures_dir}/expert_usage.png")
     plot_comprehensive_analysis(routing_collector, perplexity_results, affinity_matrix, dialects, save_path=f"{config.figures_dir}/comprehensive_analysis.png")
 
-    # SAVE RESULTS (convert non-serializable types)
+ 
     print("\n" + "="*80)
     print("SAVING RESULTS")
     print("="*80)
@@ -2118,7 +1913,7 @@ def run_comprehensive_evaluation(
         "perplexity": perplexity_results,
         "routing_statistics": routing_stats,
         "dialect_expert_affinity": {
-            "matrix": affinity_matrix,  # will be converted
+            "matrix": affinity_matrix, 
             "dialects": dialects
         },
         "entropy_per_layer": entropies,
@@ -2128,7 +1923,7 @@ def run_comprehensive_evaluation(
         }
     }
 
-    # Convert to JSON-serializable
+  
     results_serializable = to_serializable(results)
 
     results_path = f"{config.results_dir}/evaluation_results.json"
@@ -2136,7 +1931,6 @@ def run_comprehensive_evaluation(
         json.dump(results_serializable, f, indent=2)
     print(f"\n✓ Results saved to: {results_path}")
 
-    # SUMMARY
     print("\n" + "="*80)
     print("EVALUATION SUMMARY")
     print("="*80)
@@ -2155,17 +1949,16 @@ def run_comprehensive_evaluation(
     if min_usage > 0:
         print(f"  Balance ratio: {max_usage/min_usage:.2f}x")
         if max_usage / min_usage < 2.0:
-            print("  Status: ✅ Well balanced!")
+            print("  Status:  Well balanced!")
         else:
-            print("  Status: ⚠️  Some imbalance detected")
+            print("  Status:   Some imbalance detected")
     else:
-        print("  Status: ⚠️  Cannot compute balance ratio (min_usage==0)")
-
-    print(f"\n✓ Dialect Specialization:")
+        print("  Status:  Cannot compute balance ratio (min_usage==0)")
+ print(f"\n✓ Dialect Specialization:")
     for i, dialect in enumerate(dialects):
         primary_expert = int(np.argmax(affinity_matrix[i]))
         primary_prob = float(affinity_matrix[i, primary_expert])
-        print(f"  {dialect:12s} → Expert {primary_expert} ({primary_prob*100:.1f}%)")
+ print(f"  {dialect:12s} → Expert {primary_expert} ({primary_prob*100:.1f}%)")
 
     print("\n" + "="*80)
     print("EVALUATION COMPLETE")
@@ -2177,10 +1970,6 @@ def run_comprehensive_evaluation(
     return results_serializable
 
 
-# ============================================================================
-# ADDITIONAL ANALYSIS FUNCTIONS (unchanged)
-# ============================================================================
-
 def compare_layer_wise_routing(routing_collector: RoutingCollector, dialect_to_id: Dict[str, int], save_path: Optional[str] = None):
     dialects = sorted(dialect_to_id.keys())
     n_layers = routing_collector.n_layers
@@ -2191,7 +1980,7 @@ def compare_layer_wise_routing(routing_collector: RoutingCollector, dialect_to_i
         affinity_matrices.append(affinity)
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
     axes = axes.flatten()
-    for layer_idx in range(min(n_layers, 6)):  # Show first 6 layers
+    for layer_idx in range(min(n_layers, 6)):  
         ax = axes[layer_idx]
         affinity = affinity_matrices[layer_idx]
         im = ax.imshow(affinity, cmap='YlOrRd', aspect='auto', vmin=0, vmax=1)
@@ -2242,10 +2031,6 @@ def analyze_routing_confidence_distribution(routing_collector: RoutingCollector,
     plt.show()
 
 
-# ============================================================================
-# STATISTICAL SIGNIFICANCE TESTING
-# ============================================================================
-
 def bootstrap_confidence_interval(losses: np.ndarray, n_bootstrap: int = 1000, confidence_level: float = 0.95) -> Tuple[float, float]:
     bootstrap_means = []
     for _ in range(n_bootstrap):
@@ -2258,9 +2043,6 @@ def bootstrap_confidence_interval(losses: np.ndarray, n_bootstrap: int = 1000, c
     return float(lower), float(upper)
 
 
-# ============================================================================
-# MAIN ENTRY POINT
-# ============================================================================
 
 def main():
     """
@@ -2271,7 +2053,6 @@ def main():
     print("PORTION 4: EVALUATION & ROUTING ANALYSIS")
     print("="*80)
 
-    # Check prerequisites (not importing; expecting functions available in notebook runtime)
     try:
         setup_data_pipeline
         create_bleach_model
@@ -2282,19 +2063,17 @@ def main():
 
     print("\n[Setup] Loading data and model...")
 
-    # Load data
     tokenizer, train_loader, val_loader, test_loader = setup_data_pipeline()
 
-    # Load dialect mapping
+  
     with open("dialect_to_id.json", 'r') as f:
         dialect_to_id = json.load(f)
 
-    # Create model
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = create_bleach_model(vocab_size=tokenizer.vocab_size)
     model = model.to(device)
 
-    # Load best checkpoint
     config = EvalConfig()
     if Path(config.checkpoint_path).exists():
         print(f"Loading checkpoint: {config.checkpoint_path}")
@@ -2302,10 +2081,9 @@ def main():
         model.load_state_dict(checkpoint["model"])
         print(f"✓ Loaded checkpoint from step {checkpoint.get('step', 'N/A')}")
     else:
-        print(f"⚠️  Checkpoint not found: {config.checkpoint_path}")
+        print(f" Checkpoint not found: {config.checkpoint_path}")
         print("Using untrained model for demonstration")
 
-    # Run evaluation
     results = run_comprehensive_evaluation(
         model=model,
         test_loader=test_loader,
@@ -2315,7 +2093,6 @@ def main():
         config=config
     )
 
-    # Additional analyses (layer-wise routing & confidence)
     print("\n" + "="*80)
     print("ADDITIONAL ANALYSES")
     print("="*80)
@@ -2348,10 +2125,6 @@ def main():
 
     return results
 
-
-# ============================================================================
-# USAGE
-# ============================================================================
 
 if __name__ == "__main__":
     results = main()
