@@ -71,14 +71,40 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 | Noakhali | 8.54 | 0.918 | 396 |
 | **Overall** | **8.23** | **0.937** | **3,779** |
 
+Dialect–Expert Specialization
+
+This table highlights how BLEACH’s experts specialize across dialects, showing dominant routing behavior alongside perplexity.
+| Dialect    | Perplexity ↓ | Dominant Expert (Routing %) |
+| ---------- | ------------ | --------------------------- |
+| Chittagong | **8.03**     | Expert-2 (28.2%)            |
+| Barisal    | 8.13         | Expert-1 (28.9%)            |
+| Sylhet     | 8.47         | Expert-2 (28.4%)            |
+| Mymensingh | 8.51         | Expert-1 (32.3%)            |
+| Noakhali   | 8.54         | Expert-2 (27.4%)            |
+
+raining Hyperparameters
+
+This table summarizes the full training configuration for reproducibility.
+| Hyperparameter              | Value     |
+| --------------------------- | --------- |
+| Initial learning rate       | 3 × 10⁻⁴  |
+| Minimum learning rate       | 3 × 10⁻⁵  |
+| Weight decay                | 0.1       |
+| AdamW (β₁, β₂)              | 0.9, 0.95 |
+| Batch size                  | 12        |
+| Gradient accumulation steps | 2         |
+| Effective batch size        | 24        |
+| Warmup steps                | 1,000     |
+| Total epochs                | 20        |
+| Total training steps        | 7,680     |
+| R-Drop α                    | 0.5       |
+| Load-balancing coefficient  | 1.0       |
+| Gradient clipping           | 1.0       |
+
+
+
 ---
 
-Dialect Name	Perplexity	Dialect specialization
-Chittagong	8.03	Expert2(28.2%)
-Barishal	8.13	Expert1(28.9%)
-Sylhet	8.47	Expert2 (28.4%)
-Mymensingh	8.51	Expert1 (32.3%)
-Noakhali	8.54	Expert2(27.4%)
 
 
 
