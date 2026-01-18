@@ -69,22 +69,21 @@ class BanglaDialectDataset(Dataset):
         self.max_length = max_length
         self.dialect_to_id = dialect_to_id or DataConfig.DIALECT_TO_ID
 
-        # Load CSV (only metadata, not tokenized data)
         print(f"Loading dataset from {csv_path}...")
         self.data = pd.read_csv(csv_path)
 
-        # Validate columns
+      
         assert "text" in self.data.columns, "CSV must have 'text' column"
         assert "dialect" in self.data.columns, "CSV must have 'dialect' column"
 
-        # Clean and validate dialects
+        
         self.data["dialect"] = self.data["dialect"].str.lower().str.strip()
         invalid_dialects = set(self.data["dialect"]) - set(self.dialect_to_id.keys())
         if invalid_dialects:
             print(f"WARNING: Found invalid dialects: {invalid_dialects}")
             self.data = self.data[self.data["dialect"].isin(self.dialect_to_id.keys())]
 
-        # Build dialect index for balanced sampling
+       
         self.dialect_indices = defaultdict(list)
         for idx, dialect in enumerate(self.data["dialect"]):
             self.dialect_indices[dialect].append(idx)
@@ -108,7 +107,7 @@ class BanglaDialectDataset(Dataset):
         text = str(row["text"])
         dialect = row["dialect"]
 
-        # Tokenize (truncation but no padding - done in collate_fn)
+     
         encoding = self.tokenizer(
             text,
             truncation=True,
@@ -118,8 +117,8 @@ class BanglaDialectDataset(Dataset):
         )
 
         return {
-            "input_ids": encoding["input_ids"].squeeze(0),  # [seq_len]
-            "attention_mask": encoding["attention_mask"].squeeze(0),  # [seq_len]
+            "input_ids": encoding["input_ids"].squeeze(0),  
+            "attention_mask": encoding["attention_mask"].squeeze(0), 
             "dialect_id": torch.tensor(self.dialect_to_id[dialect], dtype=torch.long)
         }
 
@@ -128,9 +127,6 @@ class BanglaDialectDataset(Dataset):
         return self.dialect_indices[dialect]
 
 
-# ============================================================================
-# BALANCED SAMPLER
-# ============================================================================
 
 class DialectBalancedSampler(Sampler):
     """
@@ -160,7 +156,7 @@ class DialectBalancedSampler(Sampler):
         self.shuffle = shuffle
         self.dialects = list(dataset.dialect_to_id.keys())
 
-        # Pre-compute total batches
+       
         min_dialect_size = min(
             len(dataset.get_dialect_indices(d)) for d in self.dialects
         )
@@ -173,7 +169,7 @@ class DialectBalancedSampler(Sampler):
         print(f"  Total samples per epoch: {self.total_samples}")
 
     def __iter__(self):
-        # Get shuffled indices for each dialect
+       
         dialect_iterators = {}
         for dialect in self.dialects:
             indices = self.dataset.get_dialect_indices(dialect)
@@ -181,19 +177,18 @@ class DialectBalancedSampler(Sampler):
                 indices = np.random.permutation(indices).tolist()
             dialect_iterators[dialect] = iter(indices)
 
-        # Generate balanced batches
+   
         for _ in range(self.num_batches):
             batch_indices = []
             for dialect in self.dialects:
-                # Take samples_per_dialect from this dialect
+              
                 for _ in range(self.samples_per_dialect):
                     try:
                         batch_indices.append(next(dialect_iterators[dialect]))
                     except StopIteration:
-                        # Shouldn't happen if num_batches calculated correctly
+                    
                         break
 
-            # Shuffle indices within batch (optional, for variety)
             if self.shuffle:
                 np.random.shuffle(batch_indices)
 
@@ -202,10 +197,6 @@ class DialectBalancedSampler(Sampler):
     def __len__(self) -> int:
         return self.total_samples
 
-
-# ============================================================================
-# COLLATE FUNCTION
-# ============================================================================
 
 def dialect_aware_collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
     """
@@ -220,18 +211,17 @@ def dialect_aware_collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, 
         attention_mask: [batch_size, max_len_in_batch]
         dialect_ids: [batch_size]
     """
-    # Find max length in this batch
+ 
     max_len = max(item["input_ids"].size(0) for item in batch)
 
     batch_size = len(batch)
-    pad_token_id = 0  # Standard padding token
+    pad_token_id = 0 
 
-    # Initialize tensors
+  
     input_ids = torch.full((batch_size, max_len), pad_token_id, dtype=torch.long)
     attention_mask = torch.zeros((batch_size, max_len), dtype=torch.long)
     dialect_ids = torch.zeros(batch_size, dtype=torch.long)
 
-    # Fill tensors
     for i, item in enumerate(batch):
         seq_len = item["input_ids"].size(0)
         input_ids[i, :seq_len] = item["input_ids"]
@@ -244,10 +234,6 @@ def dialect_aware_collate_fn(batch: List[Dict[str, torch.Tensor]]) -> Dict[str, 
         "dialect_ids": dialect_ids
     }
 
-
-# ============================================================================
-# DATALOADER BUILDER
-# ============================================================================
 
 def build_dataloaders(
     train_path: str,
@@ -265,21 +251,19 @@ def build_dataloaders(
     Returns:
         train_loader, val_loader, test_loader
     """
-    # Create datasets
+  
     train_dataset = BanglaDialectDataset(train_path, tokenizer)
     val_dataset = BanglaDialectDataset(val_path, tokenizer)
     test_dataset = BanglaDialectDataset(test_path, tokenizer)
 
-    # Create samplers
+   
     train_sampler = DialectBalancedSampler(
         train_dataset,
         samples_per_dialect=samples_per_dialect,
         shuffle=True
     )
 
-    # Validation/test use standard sequential sampling (no balancing needed)
 
-    # Create dataloaders
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -310,9 +294,7 @@ def build_dataloaders(
     return train_loader, val_loader, test_loader
 
 
-# ============================================================================
-# MAIN SETUP FUNCTION
-# ============================================================================
+
 
 def setup_data_pipeline():
     """
@@ -323,13 +305,12 @@ def setup_data_pipeline():
     print("PORTION 1: DATA PIPELINE SETUP")
     print("="*80)
 
-    # 1. Load tokenizer
     print("\n[1/4] Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(DataConfig.TOKENIZER_NAME)
     print(f"Tokenizer loaded: {DataConfig.TOKENIZER_NAME}")
     print(f"Vocab size: {tokenizer.vocab_size}")
 
-    # 2. Build dataloaders
+ 
     print("\n[2/4] Building dataloaders...")
     train_loader, val_loader, test_loader = build_dataloaders(
         train_path=DataConfig.TRAIN_PATH,
