@@ -71,7 +71,7 @@ BLEACH is a **117.5M parameter sparse Mixture-of-Experts (MoE) language model** 
 | Noakhali | 8.54 | 0.918 | 396 |
 | **Overall** | **8.23** | **0.937** | **3,779** |
 
-Dialect–Expert Specialization
+### Dialect–Expert Specialization
 
 This table highlights how BLEACH’s experts specialize across dialects, showing dominant routing behavior alongside perplexity.
 | Dialect    | Perplexity ↓ | Dominant Expert (Routing %) |
@@ -82,7 +82,7 @@ This table highlights how BLEACH’s experts specialize across dialects, showing
 | Mymensingh | 8.51         | Expert-1 (32.3%)            |
 | Noakhali   | 8.54         | Expert-2 (27.4%)            |
 
-raining Hyperparameters
+### Hyperparameters configuration 
 
 This table summarizes the full training configuration for reproducibility.
 | Hyperparameter              | Value     |
